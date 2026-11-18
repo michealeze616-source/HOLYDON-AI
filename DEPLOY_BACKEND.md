@@ -1,12 +1,32 @@
-# Backend deployment (free tier)
+# HOLYDON AI backend deployment
 
-1. Create a new Web Service on Render and connect this repository.
-2. Set **Root Directory** to `backend`, **Runtime** to Docker, and choose the Free plan if available.
-3. Add the environment variable `GROQ_API_KEY` in the Render dashboard. Paste your Groq key there, not in GitHub files.
-4. Deploy. Open `https://YOUR-SERVICE.onrender.com/health` and confirm `status: ok` and `groq_configured: true`.
-5. In `app/src/main/java/com/holydon/ai/MainActivity.java`, replace `https://YOUR-HOLYDON-BACKEND.onrender.com` with your actual Render URL, commit, and let GitHub Actions rebuild the APK.
+The Android app is built separately from the cloud AI service. Deploy this backend once, then enter its URL inside the app under **Settings**.
 
-Groq powers chat and code help. It does not generate or edit images. Image Studio needs a separate image model/provider. To configure one, set `HF_IMAGE_API_URL` and `HF_TOKEN` as private backend environment variables. Provider availability, pricing and free quotas are controlled by that provider; the app cannot guarantee unlimited free cloud generations.
+## Deploy on Render
 
-## Key handling
-Never put provider keys in Android source, APK assets, Git commits, screenshots, or public issue reports. If a key was posted into a chat or public place, revoke it at the provider and create a replacement before deployment.
+1. Open Render and create a new **Blueprint** using this GitHub repository, or create a Web Service manually.
+2. For a manual service, set **Root Directory** to `backend`, **Runtime** to Docker, and select the Free plan if available.
+3. Add `GROQ_API_KEY` as a private environment variable in Render. Do not put provider keys in Android source or GitHub.
+4. Deploy and open `https://YOUR-SERVICE.onrender.com/health`. Confirm the response includes `"status":"ok"` and `"groq_configured":true`.
+5. Install the Android APK, open **Settings**, enter the service URL (without an endpoint path), tap **Save Connection**, then **Test Backend Connection**.
+
+## What works when the backend is configured
+
+- Chat and code assistance through Groq, with the recent conversation turns sent as context.
+- PDF text extraction and question answering for selectable-text PDFs up to 12 MB and 80 pages.
+- Image generation through the optional image provider configured below.
+
+Scanned/image-only PDFs do not have OCR yet. PDF processing uses extracted text, so very large documents are truncated to a bounded context.
+
+## Optional image generation
+
+Groq is a text model and does not generate images. To enable Image Studio, configure these private backend environment variables in Render:
+
+- `HF_IMAGE_API_URL`: the inference endpoint for a compatible text-to-image model.
+- `HF_TOKEN`: the provider access token.
+
+The configured endpoint must accept a JSON body with an `inputs` prompt and return image bytes. Provider availability, pricing and free quotas are controlled by that provider. The app cannot guarantee unlimited free image generation. Upload-based image editing is not implemented yet.
+
+## Key safety
+
+Never place API keys in Android source, APK assets, Git commits, screenshots, or public issue reports. If a key is exposed, revoke it at the provider and create a replacement.

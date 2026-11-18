@@ -30,9 +30,21 @@ def chat():
     if not message:
         return jsonify(error="Message cannot be empty."), 400
     system = SYSTEM + (" You are currently acting as a senior programming assistant. Give accurate code and explain key steps." if mode == "code" else "")
+    turns = [{"role": "system", "content": system}]
+    supplied = data.get("messages")
+    if isinstance(supplied, list):
+        for item in supplied[-20:]:
+            if not isinstance(item, dict):
+                continue
+            role = item.get("role")
+            content = str(item.get("content", ""))[:12000]
+            if role in ("user", "assistant") and content.strip():
+                turns.append({"role": role, "content": content})
+    if len(turns) == 1:
+        turns.append({"role": "user", "content": message})
     try:
         r = requests.post(GROQ_URL, headers={"Authorization": f"Bearer {key}", "Content-Type":"application/json"},
-            json={"model":MODEL,"messages":[{"role":"system","content":system},{"role":"user","content":message}],"temperature":0.7},
+            json={"model":MODEL,"messages":turns,"temperature":0.7},
             timeout=55)
         if r.status_code >= 400:
             return jsonify(error=f"Groq provider error ({r.status_code}): {r.text[:500]}"), 502

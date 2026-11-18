@@ -188,7 +188,13 @@ public class MainActivity extends Activity {
         ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(composer.getWindowToken(),0);
         busy=true;connectionLabel.setText("● HOLYDON AI IS THINKING…");
         JSONObject data=new JSONObject();
-        try{data.put("message",prompt);data.put("mode",mode);}catch(Exception ignored){}
+        try{
+            data.put("message",prompt);data.put("mode",mode);
+            JSONArray saved=loadHistory();JSONArray context=new JSONArray();
+            int first=Math.max(0,saved.length()-20);
+            for(int i=first;i<saved.length();i++){JSONObject item=saved.optJSONObject(i);if(item==null)continue;JSONObject turn=new JSONObject();turn.put("role",item.optString("role","user"));turn.put("content",item.optString("text",""));context.put(turn);}
+            data.put("messages",context);
+        }catch(Exception ignored){}
         request("/api/chat",data,(result,error)->{
             busy=false;
             if(error==null){addBubble("assistant",result,true);connectionLabel.setText("● RESPONSE RECEIVED");}

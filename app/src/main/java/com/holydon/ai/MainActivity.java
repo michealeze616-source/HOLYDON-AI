@@ -275,7 +275,7 @@ public class MainActivity extends Activity {
         test.setOnClickListener(v->{String value=url.getText().toString().trim().replaceAll("/+$","");if(value.isEmpty()){result.setText("Enter the backend URL first.");return;}result.setText("Checking service…");worker.execute(()->{String msg;HttpURLConnection c=null;try{c=(HttpURLConnection)new URL(value+"/health").openConnection();c.setConnectTimeout(12000);c.setReadTimeout(12000);int code=c.getResponseCode();msg=code>=200&&code<300?"Backend is online (HTTP "+code+").":"Backend returned HTTP "+code+".";}catch(Exception e){msg="Could not connect: "+e.getMessage();}finally{if(c!=null)c.disconnect();}String finalMsg=msg;runOnUiThread(()->result.setText(finalMsg));});});
         l.addView(text("ABOUT HOLYDON AI",11,"#8CC6FF"));
         l.addView(muted("HOLYDON AI is your personal AI workspace. Chat history is stored locally on this device. Your backend URL is a connection address, not an API key."));
-        l.addView(muted("Live chat requires a deployed backend. Image generation requires an image provider. PDF analysis requires a document-processing endpoint."));
+        l.addView(muted("Live chat requires a deployed backend. Image generation requires an image provider. PDF analysis requires the deployed backend and its PDF extraction package."));
     }
 
     private void generateImage(String prompt,ImageView preview,TextView status,Button run){

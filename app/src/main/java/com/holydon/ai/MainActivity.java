@@ -313,7 +313,7 @@ public class MainActivity extends Activity {
                 try(OutputStream out=conn.getOutputStream()){
                     writePart(out,boundary,"question",null,question.getBytes(StandardCharsets.UTF_8));
                     writePart(out,boundary,"file","document.pdf",pdf);
-                    out.write(("--"+boundary+"--\\r\\n").getBytes(StandardCharsets.UTF_8));
+                    out.write(("--"+boundary+"--\r\n").getBytes(StandardCharsets.UTF_8));
                 }
                 int code=conn.getResponseCode();InputStream in=code>=400?conn.getErrorStream():conn.getInputStream();ByteArrayOutputStream bytes=new ByteArrayOutputStream();if(in!=null){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)bytes.write(b,0,n);}JSONObject json=new JSONObject(bytes.toString("UTF-8"));if(code<200||code>=300)throw new Exception(json.optString("error","Server error HTTP "+code));answer=json.optString("reply","No answer returned.");
             }catch(Exception e){error=e.getMessage()==null?"Unknown upload error":e.getMessage();}finally{if(conn!=null)conn.disconnect();}

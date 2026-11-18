@@ -257,7 +257,7 @@ public class MainActivity extends Activity {
             }
         }
         Button clear=button("CLEAR CHAT HISTORY");l.addView(clear);
-        clear.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Clear history?").setMessage("This removes saved conversations from this device.").setNegativeButton("CANCEL",null).setPositiveButton("CLEAR",(d,w)->{getSharedPreferences(PREFS,0).edit().remove(HISTORY).apply();showHistory();}).show());
+        clear.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Clear history?").setMessage("This removes saved conversations from this device.").setNegativeButton("CANCEL",null).setPositiveButton("CLEAR",(d,w)->{getSharedPreferences(PREFS,0).edit().remove(HISTORY).apply();renderPage();}).show());
     }
     private boolean isConfigured(){return !getSharedPreferences(PREFS,0).getString("api_base","").trim().isEmpty();}
     private String baseUrl(){return getSharedPreferences(PREFS,0).getString("api_base","").trim().replaceAll("/+$","");}

@@ -155,12 +155,15 @@ public class MainActivity extends Activity {
     }
     private void addBubble(String role,String value,boolean persist){
         boolean user=role.equalsIgnoreCase("user")||role.equalsIgnoreCase("YOU");
+        LinearLayout row=horizontal();row.setGravity(user?Gravity.RIGHT:Gravity.LEFT);
         LinearLayout card=vertical();card.setPadding(dp(13),dp(9),dp(13),dp(10));
-        card.setBackground(shape(user?"#19304A":"#121B2A",18));
-        TextView who=text(user?"YOU":"HOLYDON AI",10,user?"#8CC6FF":"#65DDB9");
+        card.setBackground(shape(user?"#244B70":"#172235",18));
+        TextView who=text(user?"YOU":"HOLYDON AI",10,user?"#A9D7FF":"#65DDB9");
         who.setTypeface(null,Typeface.BOLD);card.addView(who);
         TextView msg=text(value,15,"#F1F5FC");msg.setPadding(dp(3),dp(5),dp(3),dp(3));card.addView(msg);
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(5),0,dp(5));messages.addView(card,p);
+        int bubbleWidth=(int)(getResources().getDisplayMetrics().widthPixels*0.80f);
+        row.addView(card,new LinearLayout.LayoutParams(bubbleWidth,-2));
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(4),0,dp(4));messages.addView(row,p);
         if(persist)saveMessage(user?"user":"assistant",value);
         if(chatScroll!=null)chatScroll.post(()->chatScroll.fullScroll(View.FOCUS_DOWN));
     }

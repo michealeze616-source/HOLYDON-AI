@@ -60,11 +60,11 @@ def pdf_chat():
             return jsonify(error="This PDF is password-protected. Please upload an unlocked copy."), 400
         if len(reader.pages) > 80:
             return jsonify(error="This PDF has more than 80 pages. Split it into smaller documents."), 413
-        extracted = "\\n".join((page.extract_text() or "") for page in reader.pages)
+        extracted = "\n".join((page.extract_text() or "") for page in reader.pages)
         if not extracted.strip():
             return jsonify(error="No selectable text was found. Scanned/image-only PDFs need OCR and are not supported yet."), 422
         extracted = extracted[:55000]
-        prompt = "Answer using the document text below. If the document does not contain the answer, say so.\\n\\nDOCUMENT TEXT:\\n" + extracted + "\\n\\nUSER QUESTION:\\n" + question
+        prompt = "Answer using the document text below. If the document does not contain the answer, say so.\n\nDOCUMENT TEXT:\n" + extracted + "\n\nUSER QUESTION:\n" + question
         r = requests.post(GROQ_URL, headers={"Authorization": f"Bearer {key}", "Content-Type":"application/json"},
             json={"model":MODEL,"messages":[{"role":"system","content":SYSTEM + " You are analysing a user-provided PDF. Ground answers only in its text."},{"role":"user","content":prompt}],"temperature":0.3}, timeout=75)
         if r.status_code >= 400:

@@ -299,8 +299,8 @@ public class MainActivity extends Activity {
         });
     }
     private void writePart(OutputStream out,String boundary,String name,String filename,byte[] data)throws IOException{
-        String head="--"+boundary+"\\r\\nContent-Disposition: form-data; name=\\\""+name+"\\\""+(filename==null?"":"; filename=\\\""+filename+"\\\"")+"\\r\\n"+(filename==null?"Content-Type: text/plain; charset=utf-8\\r\\n":"Content-Type: application/pdf\\r\\n")+"\\r\\n";
-        out.write(head.getBytes(StandardCharsets.UTF_8));out.write(data);out.write("\\r\\n".getBytes(StandardCharsets.UTF_8));
+        String head="--"+boundary+"\r\nContent-Disposition: form-data; name="+name+(filename==null?"":"; filename="+filename)+"\r\n"+(filename==null?"Content-Type: text/plain; charset=utf-8\r\n":"Content-Type: application/pdf\r\n")+"\r\n";
+        out.write(head.getBytes(StandardCharsets.UTF_8));out.write(data);out.write("\r\n".getBytes(StandardCharsets.UTF_8));
     }
     interface Callback{void done(String result,String error);}
     private void request(String path,JSONObject data,Callback cb){

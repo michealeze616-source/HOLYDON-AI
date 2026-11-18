@@ -78,15 +78,15 @@ public class MainActivity extends Activity {
         FrameLayout frame=new FrameLayout(this);
         body=vertical();frame.addView(body,new FrameLayout.LayoutParams(-1,-1));
         root.addView(frame,new LinearLayout.LayoutParams(-1,0,1));
-        LinearLayout nav=horizontal();nav.setPadding(dp(5),dp(5),dp(5),dp(5));nav.setBackgroundColor(color("#101827"));
+        LinearLayout nav=horizontal();nav.setPadding(dp(5),dp(5),dp(5),dp(10));nav.setMinimumHeight(dp(76));nav.setGravity(Gravity.CENTER_VERTICAL);nav.setBackgroundColor(color("#101827"));
         String[] tabs={"CHAT","TOOLS","HISTORY","SETTINGS"};
         String[] icons={"◉","✧","◷","⚙"};
         for(int i=0;i<tabs.length;i++){
             final String tab=tabs[i];LinearLayout item=vertical();item.setGravity(Gravity.CENTER);
             TextView ic=text(icons[i],18,page.equals(tab)?"#8CC6FF":"#8291A8");ic.setGravity(Gravity.CENTER);
-            TextView tx=text(tabs[i],9,page.equals(tab)?"#8CC6FF":"#8291A8");tx.setGravity(Gravity.CENTER);
+            TextView tx=text(tabs[i],10,page.equals(tab)?"#8CC6FF":"#8291A8");tx.setGravity(Gravity.CENTER);tx.setIncludeFontPadding(false);
             item.addView(ic);item.addView(tx);
-            nav.addView(item,new LinearLayout.LayoutParams(0,dp(54),1));
+            item.setPadding(0,dp(3),0,dp(3));nav.addView(item,new LinearLayout.LayoutParams(0,dp(64),1));
             item.setOnClickListener(v->{page=tab;renderPage();});
         }
         root.addView(nav);setContentView(root);renderPage();
@@ -228,13 +228,14 @@ public class MainActivity extends Activity {
         l.addView(muted("Image creation and editing are not active until an image-generation provider is connected."));
     }
     private void showPdf(LinearLayout l){
-        l.addView(heading("PDF intelligence"));l.addView(muted("Select a PDF, then ask what you want to understand."));
+        l.addView(heading("PDF intelligence"));l.addView(muted("Upload a PDF and ask questions about its actual text. Maximum 12 MB."));
         Button pick=button("SELECT PDF DOCUMENT");l.addView(pick);
         TextView file=text(selectedFile==null?"No document selected":selectedFile.getLastPathSegment(),12,"#AAB8CD");l.addView(file);
         EditText q=edit("Ask a question about this PDF…",3);l.addView(q);
         Button analyse=button("ANALYSE DOCUMENT");l.addView(analyse);
+        TextView result=muted("Your document answer will appear here.");l.addView(result);
         pick.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_GET_CONTENT);i.setType("application/pdf");startActivityForResult(i,43);});
-        analyse.setOnClickListener(v->{if(selectedFile==null)Toast.makeText(this,"Select a PDF first.",0).show();else Toast.makeText(this,"PDF upload and analysis endpoint is not connected yet.",1).show();});
+        analyse.setOnClickListener(v->{if(selectedFile==null){Toast.makeText(this,"Select a PDF first.",0).show();return;}String question=q.getText().toString().trim();if(question.isEmpty())question="Summarise this document and identify its key points.";result.setText("Uploading and reading PDF…");uploadPdf(selectedFile,question,(answer,error)->result.setText(error==null?answer:"PDF analysis failed: "+error));});
     }
     private void showCode(LinearLayout l){
         l.addView(heading("Code assistant"));l.addView(muted("Plan, write, explain and debug code with HOLYDON AI."));
@@ -274,6 +275,32 @@ public class MainActivity extends Activity {
         l.addView(text("ABOUT HOLYDON AI",11,"#8CC6FF"));
         l.addView(muted("HOLYDON AI is your personal AI workspace. Chat history is stored locally on this device. Your backend URL is a connection address, not an API key."));
         l.addView(muted("Live chat requires a deployed backend. Image generation requires an image provider. PDF analysis requires a document-processing endpoint."));
+    }
+
+    private void uploadPdf(Uri uri,String question,Callback cb){
+        worker.execute(()->{
+            HttpURLConnection conn=null;String answer=null,error=null;
+            String boundary="----HOLYDON"+System.currentTimeMillis();
+            try{
+                byte[] pdf;
+                try(InputStream input=getContentResolver().openInputStream(uri);ByteArrayOutputStream out=new ByteArrayOutputStream()){
+                    if(input==null)throw new Exception("Cannot open the selected document.");
+                    byte[] buf=new byte[8192];int n;while((n=input.read(buf))!=-1){out.write(buf,0,n);if(out.size()>12*1024*1024)throw new Exception("PDF is larger than 12 MB.");}pdf=out.toByteArray();
+                }
+                conn=(HttpURLConnection)new URL(baseUrl()+"/api/pdf").openConnection();conn.setRequestMethod("POST");conn.setConnectTimeout(20000);conn.setReadTimeout(90000);conn.setDoOutput(true);conn.setRequestProperty("Content-Type","multipart/form-data; boundary="+boundary);
+                try(OutputStream out=conn.getOutputStream()){
+                    writePart(out,boundary,"question",null,question.getBytes(StandardCharsets.UTF_8));
+                    writePart(out,boundary,"file","document.pdf",pdf);
+                    out.write(("--"+boundary+"--\\r\\n").getBytes(StandardCharsets.UTF_8));
+                }
+                int code=conn.getResponseCode();InputStream in=code>=400?conn.getErrorStream():conn.getInputStream();ByteArrayOutputStream bytes=new ByteArrayOutputStream();if(in!=null){byte[] b=new byte[4096];int n;while((n=in.read(b))!=-1)bytes.write(b,0,n);}JSONObject json=new JSONObject(bytes.toString("UTF-8"));if(code<200||code>=300)throw new Exception(json.optString("error","Server error HTTP "+code));answer=json.optString("reply","No answer returned.");
+            }catch(Exception e){error=e.getMessage()==null?"Unknown upload error":e.getMessage();}finally{if(conn!=null)conn.disconnect();}
+            final String a=answer,er=error;runOnUiThread(()->cb.done(a,er));
+        });
+    }
+    private void writePart(OutputStream out,String boundary,String name,String filename,byte[] data)throws IOException{
+        String head="--"+boundary+"\\r\\nContent-Disposition: form-data; name=\\\""+name+"\\\""+(filename==null?"":"; filename=\\\""+filename+"\\\"")+"\\r\\n"+(filename==null?"Content-Type: text/plain; charset=utf-8\\r\\n":"Content-Type: application/pdf\\r\\n")+"\\r\\n";
+        out.write(head.getBytes(StandardCharsets.UTF_8));out.write(data);out.write("\\r\\n".getBytes(StandardCharsets.UTF_8));
     }
     interface Callback{void done(String result,String error);}
     private void request(String path,JSONObject data,Callback cb){

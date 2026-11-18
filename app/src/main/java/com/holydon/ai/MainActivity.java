@@ -4,6 +4,7 @@ import android.app.*;
 import android.os.*;
 import android.content.*;
 import android.graphics.Color;
+import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -218,14 +219,14 @@ public class MainActivity extends Activity {
         else showCode(l);
     }
     private void showImage(LinearLayout l){
-        l.addView(heading("Image studio"));l.addView(muted("Describe the image you want to create or the changes you want."));
-        EditText prompt=edit("Describe your image or edit…",4);l.addView(prompt);
-        Button pick=button("CHOOSE IMAGE TO EDIT");l.addView(pick);
-        TextView file=text("No image selected",12,"#AAB8CD");l.addView(file);
-        pick.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_GET_CONTENT);i.setType("image/*");startActivityForResult(i,42);});
-        Button run=button("CREATE IMAGE");l.addView(run);
-        run.setOnClickListener(v->{if(prompt.getText().toString().trim().isEmpty())Toast.makeText(this,"Write an image instruction first.",0).show();else Toast.makeText(this,"Image generation needs an image provider connected to the backend.",1).show();});
-        l.addView(muted("Image creation and editing are not active until an image-generation provider is connected."));
+        l.addView(heading("Image studio"));l.addView(muted("Create an image from a text description. An image provider must be configured on your backend."));
+        EditText prompt=edit("Describe the image you want to create…",4);l.addView(prompt);
+        Button run=button("GENERATE IMAGE");l.addView(run);
+        ImageView preview=new ImageView(this);preview.setAdjustViewBounds(true);preview.setScaleType(ImageView.ScaleType.FIT_CENTER);preview.setBackground(shape("#111C2D",18));
+        LinearLayout.LayoutParams imageParams=new LinearLayout.LayoutParams(-1,dp(300));imageParams.setMargins(0,dp(12),0,dp(8));l.addView(preview,imageParams);
+        TextView status=muted("Your generated image will appear here.");l.addView(status);
+        run.setOnClickListener(v->{String description=prompt.getText().toString().trim();if(description.isEmpty()){Toast.makeText(this,"Describe the image first.",0).show();return;}status.setText("Generating image…");run.setEnabled(false);generateImage(description,preview,status,run);});
+        l.addView(muted("Image editing from an uploaded photo is not enabled yet. This tool generates new images only."));
     }
     private void showPdf(LinearLayout l){
         l.addView(heading("PDF intelligence"));l.addView(muted("Upload a PDF and ask questions about its actual text. Maximum 12 MB."));
@@ -277,6 +278,21 @@ public class MainActivity extends Activity {
         l.addView(muted("Live chat requires a deployed backend. Image generation requires an image provider. PDF analysis requires a document-processing endpoint."));
     }
 
+    private void generateImage(String prompt,ImageView preview,TextView status,Button run){
+        worker.execute(()->{
+            HttpURLConnection conn=null;android.graphics.Bitmap bitmap=null;String error=null;
+            try{
+                JSONObject data=new JSONObject();data.put("prompt",prompt);
+                conn=(HttpURLConnection)new URL(baseUrl()+"/api/image").openConnection();conn.setRequestMethod("POST");conn.setConnectTimeout(20000);conn.setReadTimeout(120000);conn.setDoOutput(true);conn.setRequestProperty("Content-Type","application/json; charset=utf-8");
+                try(OutputStream out=conn.getOutputStream()){out.write(data.toString().getBytes(StandardCharsets.UTF_8));}
+                int code=conn.getResponseCode();String type=conn.getContentType()==null?"":conn.getContentType().toLowerCase();
+                if(code<200||code>=300){InputStream in=conn.getErrorStream();ByteArrayOutputStream bytes=new ByteArrayOutputStream();if(in!=null){byte[] b=new byte[2048];int n;while((n=in.read(b))!=-1)bytes.write(b,0,n);}try{error=new JSONObject(bytes.toString("UTF-8")).optString("error","Image provider returned HTTP "+code);}catch(Exception ignored){error="Image provider returned HTTP "+code;}}
+                else if(type.startsWith("image/")){try(InputStream in=conn.getInputStream()){bitmap=BitmapFactory.decodeStream(in);}if(bitmap==null)error="The image provider returned an unreadable image.";}
+                else{InputStream in=conn.getInputStream();ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] b=new byte[2048];int n;while((n=in.read(b))!=-1)bytes.write(b,0,n);try{error=new JSONObject(bytes.toString("UTF-8")).optString("error","Provider did not return an image.");}catch(Exception ignored){error="Provider did not return an image file.";}}
+            }catch(Exception e){error=e.getMessage()==null?"Image generation failed":e.getMessage();}finally{if(conn!=null)conn.disconnect();}
+            final android.graphics.Bitmap image=bitmap;final String problem=error;runOnUiThread(()->{run.setEnabled(true);if(image!=null){preview.setImageBitmap(image);status.setText("Image generated successfully.");}else status.setText("Could not generate image: "+problem);});
+        });
+    }
     private void uploadPdf(Uri uri,String question,Callback cb){
         worker.execute(()->{
             HttpURLConnection conn=null;String answer=null,error=null;

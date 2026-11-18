@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: holydon-ai-api
+    runtime: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
